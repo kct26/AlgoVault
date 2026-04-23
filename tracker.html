@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Solutions — Algo Vault</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,400;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/eclipse.min.css">
+  <style>
+    /* Override CodeMirror to match our editor-wrap */
+    .CodeMirror {
+      font-family: 'JetBrains Mono', 'Courier New', monospace !important;
+      font-size: 12.5px !important;
+      line-height: 1.75 !important;
+      height: 100% !important;
+      background: var(--white) !important;
+      color: var(--black) !important;
+      border: none !important;
+    }
+    .CodeMirror-scroll { min-height: 320px; }
+    .CodeMirror-gutters {
+      background: var(--off) !important;
+      border-right: 1px solid var(--dim) !important;
+      min-width: 44px;
+    }
+    .CodeMirror-linenumber {
+      color: var(--mid) !important;
+      padding: 0 10px 0 8px !important;
+      font-size: 12px !important;
+    }
+    .CodeMirror-cursor { border-left: 2px solid var(--black) !important; }
+    .CodeMirror-selected { background: rgba(10,10,10,0.08) !important; }
+    .CodeMirror-focused .CodeMirror-selected { background: rgba(10,10,10,0.12) !important; }
+    /* Eclipse theme keyword tweaks */
+    .cm-keyword  { color: #7c3aed !important; font-weight: 600; }
+    .cm-def      { color: #1d4ed8 !important; }
+    .cm-variable { color: #0f172a !important; }
+    .cm-variable-2 { color: #0369a1 !important; }
+    .cm-string   { color: #16a34a !important; }
+    .cm-string-2 { color: #15803d !important; }
+    .cm-number   { color: #dc2626 !important; }
+    .cm-comment  { color: #94a3b8 !important; font-style: italic; }
+    .cm-operator { color: #7c3aed !important; }
+    .cm-builtin  { color: #b45309 !important; }
+    .cm-atom     { color: #dc2626 !important; }
+    .cm-tag      { color: #be185d !important; }
+    .cm-attribute{ color: #0369a1 !important; }
+    .cm-bracket  { color: #374151 !important; }
+    .cm-meta     { color: #6b7280 !important; }
+    .cm-property { color: #0369a1 !important; }
+    /* Hide the original textarea gutter since CodeMirror has its own */
+    .editor-gutter { display: none; }
+    /* Make editor-body take full height */
+    .editor-body  { min-height: 320px; flex: 1; }
+    .editor-wrap  { display: flex; flex-direction: column; }
+    #cm-container { flex: 1; overflow: hidden; display: flex; flex-direction: column; }
+    #cm-container .CodeMirror { flex: 1; }
+  </style>
+  <style>
+    /* grain */
+    body::after {
+      content: '';
+      position: fixed; inset: 0; z-index: 99990;
+      pointer-events: none; opacity: 0.020;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+      background-size: 160px 160px;
+    }
+
+    /* p-row underline on hover */
+    .p-name { position: relative; }
+    .p-name::after {
+      content: ''; position: absolute; left: 0; bottom: -1px;
+      width: 0; height: 1px; background: var(--black);
+      transition: width 0.2s ease;
+    }
+    .p-row:hover .p-name::after { width: 100%; }
+
+    /* solved dot glow pulse */
+    .p-has-sol.yes { animation: glow 2.6s ease-in-out infinite; }
+    @keyframes glow {
+      0%,100% { box-shadow: 0 0 0 0   rgba(10,10,10,0.25); }
+      50%      { box-shadow: 0 0 0 4px rgba(10,10,10,0); }
+    }
+
+    /* tab key hint */
+    .kbd {
+      display: inline-flex; align-items: center; justify-content: center;
+      padding: 1px 5px; font-size: 9px; line-height: 1.4;
+      border: 1px solid var(--dim); color: var(--mid);
+      margin-left: 5px; vertical-align: middle;
+      box-shadow: 0 1px 0 var(--dim);
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── CURSORS ── -->
+<div id="cur-dot"></div>
+<div id="cur-ring"></div>
+
+<!-- ── NAV ── -->
+<nav>
+  <div class="nav-logo">ALGO VAULT</div>
+  <div class="nav-links">
+    <a href="index.html">Index</a>
+    <a href="tracker.html" class="active">Solutions</a>
+  </div>
+  <div class="sol-indicator">
+    Saved: <strong id="nav-sol-cnt">—</strong>
+  </div>
+</nav>
+
+<!-- ══════════════════════════════════════════
+     LAYOUT
+══════════════════════════════════════════ -->
+<div class="tracker-wrap">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sidebar-head">
+      <h2>Topics</h2>
+      <div class="sidebar-search">
+        <input type="text" id="sb-search" placeholder="Search…" autocomplete="off" />
+      </div>
+    </div>
+    <div class="sidebar-filters">
+      <button class="sf-btn active" data-f="all">All</button>
+      <button class="sf-btn" data-f="easy">Easy</button>
+      <button class="sf-btn" data-f="medium">Med</button>
+      <button class="sf-btn" data-f="hard">Hard</button>
+    </div>
+    <div class="sidebar-topics" id="sb-nav"></div>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="tracker-main">
+    <div class="tracker-topbar">
+      <h1>Solutions</h1>
+      <div class="tb-right">150 problems · 18 topics</div>
+    </div>
+    <div id="tracker-sections"></div>
+  </main>
+
+</div>
+
+<!-- ══════════════════════════════════════════
+     MODAL
+══════════════════════════════════════════ -->
+<div class="modal-overlay" id="modal-overlay">
+  <div class="modal-box">
+
+    <div class="modal-head">
+      <div class="modal-head-info">
+        <div class="modal-head-num">
+          <span id="m-topic">Topic</span>
+          &nbsp;·&nbsp;
+          <span class="p-diff-badge medium" id="m-diff">medium</span>
+        </div>
+        <div class="modal-head-title" id="m-title">Problem</div>
+      </div>
+      <a id="m-leetcode-link" href="#" target="_blank" rel="noopener" class="leetcode-btn" title="Open on LeetCode">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+        LeetCode
+      </a>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+
+    <div class="modal-body">
+
+      <!-- LEFT: problem info — three distinct sections -->
+      <div class="modal-left">
+
+        <!-- 1. Description — white, readable -->
+        <div class="modal-section-desc">
+          <div class="section-label">Problem</div>
+          <p class="prob-description" id="m-desc"></p>
+        </div>
+
+        <!-- 2. Examples — paper bg, code-bordered cards -->
+        <div class="modal-section-examples">
+          <div class="section-label">Examples</div>
+          <div id="m-examples"></div>
+        </div>
+
+        <!-- 3. Constraints — dark inverted strip -->
+        <div class="modal-section-constraints">
+          <div class="section-label">Constraints</div>
+          <div id="m-constraints"></div>
+        </div>
+
+      </div>
+
+      <!-- RIGHT: solution editor -->
+      <div class="modal-right">
+        <div>
+          <div class="section-label">Language</div>
+          <div class="lang-tabs" id="m-lang-tabs"></div>
+        </div>
+
+        <!-- Terminal-style code editor -->
+        <div class="editor-wrap">
+          <!-- Slim header: filename + kb hint -->
+          <div class="editor-titlebar">
+            <span class="editor-filename" id="editor-filename">solution.py</span>
+            <span class="editor-kb-hint">⌘S to save</span>
+          </div>
+          <!-- Gutter + CodeMirror editor -->
+          <div class="editor-body">
+            <div class="editor-gutter" id="editor-gutter">1</div>
+            <div id="cm-container" style="flex:1;overflow:hidden;">
+              <textarea id="m-editor" style="display:none;" spellcheck="false"></textarea>
+            </div>
+          </div>
+          <!-- Status bar -->
+          <div class="editor-statusbar">
+            <span>Algo Vault</span>
+            <span class="editor-status-lang" id="editor-status-lang">Python</span>
+          </div>
+        </div>
+
+        <div>
+          <div class="section-label">Notes / Complexity</div>
+          <textarea
+            class="notes-editor"
+            id="m-notes"
+            placeholder="Time: O(n)  ·  Space: O(1)  ·  Key insight: …"
+            spellcheck="false"
+          ></textarea>
+        </div>
+      </div>
+
+    </div><!-- /modal-body -->
+
+    <div class="modal-foot">
+      <span class="save-msg" id="save-msg">Saved ✓</span>
+      <!-- Completion checkbox -->
+      <div class="m-complete-wrap" onclick="if(curModal) { window.toggleComplete(curModal.topicName, curModal.probName); }">
+        <span class="m-complete-cb" id="m-complete-cb">
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none" class="m-check-icon">
+            <polyline points="1.5,6 4.5,9 10.5,3" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </span>
+        <span class="m-complete-label" id="m-complete-label">Mark as complete</span>
+      </div>
+      <button class="btn-cancel" id="modal-cancel-btn">Close</button>
+      <button class="btn-save" id="modal-save-btn">Save</button>
+    </div>
+
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/python/python.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/clike/clike.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/go/go.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/rust/rust.min.js"></script>
+<script src="app.js"></script>
+<script>
+/* ── CURSOR ── */
+(function() {
+  var dot = document.getElementById('cur-dot');
+  var ring = document.getElementById('cur-ring');
+  if (!dot || !ring) return;
+  var mx = -300, my = -300, rx = -300, ry = -300;
+  document.addEventListener('mousemove', function(e) {
+    mx = e.clientX; my = e.clientY;
+    dot.style.left = mx + 'px'; dot.style.top = my + 'px';
+  });
+  (function loop() {
+    rx += (mx - rx) * 0.13; ry += (my - ry) * 0.13;
+    ring.style.left = Math.round(rx) + 'px'; ring.style.top = Math.round(ry) + 'px';
+    requestAnimationFrame(loop);
+  })();
+  document.addEventListener('mouseover', function(e) {
+    var cl = document.body.classList;
+    cl.remove('cur-link','cur-text','cur-example');
+    if (e.target.closest('.prob-example'))
+      cl.add('cur-example');
+    else if (e.target.closest('a,button,.p-row,.sb-topic,.t-group-hdr,.modal-close,.CodeMirror'))
+      cl.add('cur-link');
+    else if (e.target.closest('textarea,input,.CodeMirror-code'))
+      cl.add('cur-text');
+  });
+})();
+</script>
+<script>
+/* ── CODEMIRROR INTEGRATION ── */
+var cmEditor = null;
+
+var LANG_MODE = {
+  'Python':     'python',
+  'JavaScript': 'javascript',
+  'TypeScript': 'text/typescript',
+  'Java':       'text/x-java',
+  'C++':        'text/x-c++src',
+  'Go':         'go',
+  'Rust':       'rust',
+  'Other':      null
+};
+var LANG_EXT = {
+  'Python':'solution.py','JavaScript':'solution.js','Java':'Solution.java',
+  'C++':'solution.cpp','Go':'solution.go','Rust':'solution.rs',
+  'TypeScript':'solution.ts','Other':'solution.txt'
+};
+var LANG_PLACEHOLDER = {
+  'Python':     '# Write your Python solution here\ndef solution():\n    pass',
+  'JavaScript': '// Write your JavaScript solution here\nconst solution = () => {\n\n};',
+  'Java':       '// Write your Java solution here\nclass Solution {\n\n}',
+  'C++':        '// Write your C++ solution here\nclass Solution {\npublic:\n\n};',
+  'Go':         '// Write your Go solution here\nfunc solution() {\n\n}',
+  'Rust':       '// Write your Rust solution here\nfn solution() {\n\n}',
+  'TypeScript': '// Write your TypeScript solution here\nconst solution = (): void => {\n\n};',
+  'Other':      '// Write your solution here'
+};
+
+function initCodeMirror(lang, value) {
+  var container = document.getElementById('cm-container');
+  if (!container) return;
+
+  /* Remove existing CM instance */
+  var existing = container.querySelector('.CodeMirror');
+  if (existing) existing.remove();
+
+  var mode = LANG_MODE[lang] || null;
+  cmEditor = CodeMirror(container, {
+    value: value || '',
+    mode: mode,
+    theme: 'eclipse',
+    lineNumbers: true,
+    indentUnit: 2,
+    tabSize: 2,
+    indentWithTabs: false,
+    lineWrapping: false,
+    autofocus: false,
+    extraKeys: {
+      'Tab': function(cm) { cm.replaceSelection('  '); },
+      'Ctrl-S': function() { saveModal(); },
+      'Cmd-S':  function() { saveModal(); }
+    },
+    placeholder: LANG_PLACEHOLDER[lang] || '// Write your solution here'
+  });
+
+  /* Sync CM value back to hidden textarea for app.js compatibility */
+  cmEditor.on('change', function(cm) {
+    var ta = document.getElementById('m-editor');
+    if (ta) ta.value = cm.getValue();
+  });
+
+  /* Update filename */
+  var fn = document.getElementById('editor-filename');
+  if (fn) fn.textContent = LANG_EXT[lang] || 'solution.txt';
+}
+
+/* Patch app.js openModal to init CodeMirror after tabs are set */
+document.addEventListener('DOMContentLoaded', function() {
+  /* Nav counter */
+  function updateSolCount() {
+    var el = document.getElementById('nav-sol-cnt');
+    if (!el) return;
+    var data = Store.load();
+    var n = 0;
+    for (var k in data) {
+      var d = data[k];
+      if (d && d.langs && Object.values(d.langs).some(function(v){return v&&v.trim();})) n++;
+    }
+    el.textContent = n + ' / 150';
+  }
+  updateSolCount();
+  var origSave = Store.save.bind(Store);
+  Store.save = function() { origSave(); updateSolCount(); };
+
+  /* Patch openModal to wire up CodeMirror */
+  var origOpen = window.openModal;
+  window.openModal = function(topicId, topicName, probName, diff, probIdx) {
+    origOpen(topicId, topicName, probName, diff, probIdx);
+    /* After app.js sets the textarea value, init CM */
+    setTimeout(function() {
+      var ta = document.getElementById('m-editor');
+      var val = ta ? ta.value : '';
+      initCodeMirror(curLang, val);
+    }, 50);
+  };
+
+  /* Patch switchLang to reinit CM with new mode */
+  var origSwitch = window.switchLang;
+  window.switchLang = function(lang) {
+    /* Save current CM content back to hidden textarea first */
+    if (cmEditor) {
+      var ta = document.getElementById('m-editor');
+      if (ta) ta.value = cmEditor.getValue();
+    }
+    origSwitch(lang);
+    /* Reinit with new language mode + loaded value */
+    setTimeout(function() {
+      var ta = document.getElementById('m-editor');
+      initCodeMirror(lang, ta ? ta.value : '');
+    }, 30);
+  };
+
+  /* Patch saveModal to pull from CM before saving */
+  var origSaveModal = window.saveModal;
+  window.saveModal = function() {
+    if (cmEditor) {
+      var ta = document.getElementById('m-editor');
+      if (ta) ta.value = cmEditor.getValue();
+    }
+    origSaveModal();
+  };
+
+  /* Patch renderLangTabs to init CM after modal opens */
+  var origRenderLangTabs = window.renderLangTabs;
+  if (origRenderLangTabs) {
+    window.renderLangTabs = function(saved) {
+      origRenderLangTabs(saved);
+    };
+  }
+});
+</script>
+</html>
