@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Solutions — Algo Vault</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,400;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    /* grain */
+    body::after {
+      content: '';
+      position: fixed; inset: 0; z-index: 99990;
+      pointer-events: none; opacity: 0.020;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+      background-size: 160px 160px;
+    }
+
+    /* p-row underline on hover */
+    .p-name { position: relative; }
+    .p-name::after {
+      content: ''; position: absolute; left: 0; bottom: -1px;
+      width: 0; height: 1px; background: var(--black);
+      transition: width 0.2s ease;
+    }
+    .p-row:hover .p-name::after { width: 100%; }
+
+    /* solved dot glow pulse */
+    .p-has-sol.yes { animation: glow 2.6s ease-in-out infinite; }
+    @keyframes glow {
+      0%,100% { box-shadow: 0 0 0 0   rgba(10,10,10,0.25); }
+      50%      { box-shadow: 0 0 0 4px rgba(10,10,10,0); }
+    }
+
+    /* tab key hint */
+    .kbd {
+      display: inline-flex; align-items: center; justify-content: center;
+      padding: 1px 5px; font-size: 9px; line-height: 1.4;
+      border: 1px solid var(--dim); color: var(--mid);
+      margin-left: 5px; vertical-align: middle;
+      box-shadow: 0 1px 0 var(--dim);
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── CURSORS ── -->
+<div id="cur-dot"></div>
+<div id="cur-ring"></div>
+
+<!-- ── NAV ── -->
+<nav>
+  <div class="nav-logo">ALGO VAULT</div>
+  <div class="nav-links">
+    <a href="index.html">Homepage</a>
+    <a href="tracker.html" class="active">Solutions</a>
+  </div>
+  <div class="sol-indicator">
+    Completed: <strong id="nav-sol-cnt">—</strong>
+  </div>
+</nav>
+
+<!-- ── MOBILE FILTER BAR (hidden on desktop) ── -->
+<div class="mob-filterbar" id="mob-filterbar">
+  <input type="text" id="mob-search" placeholder="Search problems…" autocomplete="off" />
+  <div class="mob-filters">
+    <button class="sf-btn active" data-f="all">All</button>
+    <button class="sf-btn" data-f="easy">Easy</button>
+    <button class="sf-btn" data-f="medium">Med</button>
+    <button class="sf-btn" data-f="hard">Hard</button>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     LAYOUT
+══════════════════════════════════════════ -->
+<div class="tracker-wrap">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sidebar-head">
+      <h2>Topics</h2>
+      <div class="sidebar-search">
+        <input type="text" id="sb-search" placeholder="Search…" autocomplete="off" />
+      </div>
+    </div>
+    <div class="sidebar-filters">
+      <button class="sf-btn active" data-f="all">All</button>
+      <button class="sf-btn" data-f="easy">Easy</button>
+      <button class="sf-btn" data-f="medium">Med</button>
+      <button class="sf-btn" data-f="hard">Hard</button>
+    </div>
+    <div class="sidebar-topics" id="sb-nav"></div>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="tracker-main">
+    <div class="tracker-topbar">
+      <h1>Solutions</h1>
+      <div class="tb-right">150 problems · 18 topics</div>
+    </div>
+    <div id="tracker-sections"></div>
+  </main>
+
+</div>
+
+<!-- ══════════════════════════════════════════
+     MODAL
+══════════════════════════════════════════ -->
+<div class="modal-overlay" id="modal-overlay">
+  <div class="modal-box">
+
+    <div class="modal-head">
+      <div class="modal-head-info">
+        <div class="modal-head-num">
+          <span id="m-topic">Topic</span>
+          &nbsp;·&nbsp;
+          <span class="p-diff-badge medium" id="m-diff">medium</span>
+        </div>
+        <div class="modal-head-title" id="m-title">Problem</div>
+      </div>
+      <a id="m-leetcode-link" href="#" target="_blank" rel="noopener" class="leetcode-btn" title="Open on LeetCode">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+        LeetCode
+      </a>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+
+    <div class="modal-body">
+
+      <!-- LEFT: problem info — three distinct sections -->
+      <div class="modal-left">
+
+        <!-- 1. Description — white, readable -->
+        <div class="modal-section-desc">
+          <div class="section-label">Problem</div>
+          <p class="prob-description" id="m-desc"></p>
+        </div>
+
+        <!-- 2. Examples — paper bg, code-bordered cards -->
+        <div class="modal-section-examples">
+          <div class="section-label">Examples</div>
+          <div id="m-examples"></div>
+        </div>
+
+        <!-- 3. Constraints — dark inverted strip -->
+        <div class="modal-section-constraints">
+          <div class="section-label">Constraints</div>
+          <div id="m-constraints"></div>
+        </div>
+
+        <!-- 4. Big-O Reference Card — fills empty space -->
+        <div class="modal-left-filler">
+          <div>
+            <div class="filler-label">Big-O Complexity Reference</div>
+          </div>
+          <div class="filler-table">
+            <div class="filler-heading">Time — Best to Worst</div>
+            <div class="filler-row"><span class="filler-complexity">O(1)</span><span class="filler-desc">Constant — hash lookup, array access</span></div>
+            <div class="filler-row"><span class="filler-complexity">O(log n)</span><span class="filler-desc">Logarithmic — binary search, balanced BST</span></div>
+            <div class="filler-row"><span class="filler-complexity">O(n)</span><span class="filler-desc">Linear — single loop, two pointers</span></div>
+            <div class="filler-row"><span class="filler-complexity">O(n log n)</span><span class="filler-desc">Linearithmic — merge sort, heap sort</span></div>
+            <div class="filler-row"><span class="filler-complexity">O(n²)</span><span class="filler-desc">Quadratic — nested loops, bubble sort</span></div>
+            <div class="filler-row"><span class="filler-complexity">O(2ⁿ)</span><span class="filler-desc">Exponential — backtracking, subsets</span></div>
+            <div class="filler-row"><span class="filler-complexity">O(n!)</span><span class="filler-desc">Factorial — all permutations</span></div>
+            <div class="filler-divider"></div>
+            <div class="filler-heading">Space Patterns</div>
+            <div class="filler-row"><span class="filler-complexity">O(1)</span><span class="filler-desc">In-place, no extra structures</span></div>
+            <div class="filler-row"><span class="filler-complexity">O(n)</span><span class="filler-desc">Hash map, stack, queue, dp array</span></div>
+            <div class="filler-row"><span class="filler-complexity">O(n²)</span><span class="filler-desc">2D DP table, adjacency matrix</span></div>
+            <div class="filler-row"><span class="filler-complexity">O(log n)</span><span class="filler-desc">Recursion stack — binary search</span></div>
+            <div class="filler-row"><span class="filler-complexity">O(h)</span><span class="filler-desc">Tree height — DFS call stack</span></div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- RIGHT: article-style solution writer -->
+      <div class="modal-right">
+
+        <!-- Approach tabs (Brute Force / Optimal / etc.) -->
+        <div class="sol-tabs-wrap">
+          <div class="section-label">Approaches</div>
+          <div class="sol-approach-tabs" id="m-approach-tabs">
+            <!-- filled by JS -->
+          </div>
+          <button class="sol-add-approach" id="m-add-approach" title="Add approach">+ Add Approach</button>
+        </div>
+
+        <!-- Article body for the active approach -->
+        <div class="sol-article" id="sol-article">
+
+          <div class="sol-field" id="m-approach-name-field">
+            <label class="sol-label" for="m-approach-name">Approach Name</label>
+            <input type="text" class="sol-input" id="m-approach-name" placeholder="e.g. Brute Force, Hash Map, Two Pointers…" spellcheck="false" />
+          </div>
+
+          <div class="sol-field">
+            <label class="sol-label" for="m-intuition">Intuition</label>
+            <textarea class="sol-textarea" id="m-intuition" rows="9"
+              placeholder="Describe the core idea — what pattern or insight does this approach use?"></textarea>
+          </div>
+
+          <div class="sol-field">
+            <label class="sol-label" for="m-algorithm">Algorithm / Steps</label>
+            <textarea class="sol-textarea" id="m-algorithm" rows="13"
+              placeholder="1. …&#10;2. …&#10;3. …"></textarea>
+          </div>
+
+          <div class="sol-field sol-field-lang">
+            <label class="sol-label">Language</label>
+            <div class="lang-tabs" id="m-lang-tabs"></div>
+          </div>
+
+          <!-- Code block — plain styled textarea, no heavy editor -->
+          <div class="sol-field sol-field-code">
+            <div class="sol-code-header">
+              <span class="editor-filename" id="editor-filename">solution.py</span>
+              <span class="editor-kb-hint">⌘S · Ctrl+S to save</span>
+            </div>
+            <textarea class="sol-code-editor" id="m-editor"
+              spellcheck="false" autocorrect="off" autocapitalize="off"
+              placeholder="# Write your solution here"></textarea>
+          </div>
+
+          <div class="sol-field sol-complexity-row">
+            <div class="sol-field-half">
+              <label class="sol-label" for="m-time">Time Complexity</label>
+              <input type="text" class="sol-input" id="m-time" placeholder="e.g. O(n log n)" spellcheck="false" />
+            </div>
+            <div class="sol-field-half">
+              <label class="sol-label" for="m-space">Space Complexity</label>
+              <input type="text" class="sol-input" id="m-space" placeholder="e.g. O(n)" spellcheck="false" />
+            </div>
+          </div>
+
+          <div class="sol-field" id="m-notes-field">
+            <label class="sol-label" for="m-notes">Notes / Key Insights</label>
+            <textarea class="sol-textarea notes-editor" id="m-notes" rows="2"
+              placeholder="Edge cases, gotchas, interview tips…" spellcheck="false"></textarea>
+          </div>
+
+        </div><!-- /sol-article -->
+      </div>
+
+    </div><!-- /modal-body -->
+
+    <div class="modal-foot">
+      <span class="save-msg" id="save-msg">Saved ✓</span>
+      <!-- Completion checkbox -->
+      <div class="m-complete-wrap" onclick="if(curModal) { window.toggleComplete(curModal.topicName, curModal.probName); }">
+        <span class="m-complete-cb" id="m-complete-cb">
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none" class="m-check-icon">
+            <polyline points="1.5,6 4.5,9 10.5,3" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </span>
+        <span class="m-complete-label" id="m-complete-label">Mark as complete</span>
+      </div>
+      <button class="btn-cancel" id="modal-cancel-btn">Close</button>
+      <button class="btn-save" id="modal-save-btn">Save</button>
+    </div>
+
+  </div>
+</div>
+
+<script src="app.js"></script>
+<script>
+/* ── CURSOR ── */
+(function() {
+  var dot = document.getElementById('cur-dot');
+  var ring = document.getElementById('cur-ring');
+  if (!dot || !ring) return;
+  var mx = -300, my = -300, rx = -300, ry = -300;
+  document.addEventListener('mousemove', function(e) {
+    mx = e.clientX; my = e.clientY;
+    dot.style.left = mx + 'px'; dot.style.top = my + 'px';
+  });
+  (function loop() {
+    rx += (mx - rx) * 0.13; ry += (my - ry) * 0.13;
+    ring.style.left = Math.round(rx) + 'px'; ring.style.top = Math.round(ry) + 'px';
+    requestAnimationFrame(loop);
+  })();
+  document.addEventListener('mouseover', function(e) {
+    var cl = document.body.classList;
+    cl.remove('cur-link','cur-text','cur-example');
+    if (e.target.closest('.prob-example'))
+      cl.add('cur-example');
+    else if (e.target.closest('a,button,.p-row,.sb-topic,.t-group-hdr,.modal-close,.CodeMirror'))
+      cl.add('cur-link');
+    else if (e.target.closest('textarea,input,.CodeMirror-code'))
+      cl.add('cur-text');
+  });
+})();
+</script>
+<script>
+/* ── MOBILE: sync mob-filterbar with sidebar controls ── */
+(function() {
+  var mobSearch = document.getElementById('mob-search');
+  var sbSearch  = document.getElementById('sb-search');
+  if (mobSearch && sbSearch) {
+    mobSearch.addEventListener('input', function() {
+      sbSearch.value = this.value;
+      sbSearch.dispatchEvent(new Event('input'));
+    });
+  }
+  // Sync mobile filter buttons
+  var mobBtns = document.querySelectorAll('#mob-filterbar .sf-btn');
+  mobBtns.forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      mobBtns.forEach(function(b){ b.classList.remove('active'); });
+      this.classList.add('active');
+      // Mirror to sidebar
+      var f = this.dataset.f;
+      document.querySelectorAll('.sidebar-filters .sf-btn').forEach(function(b){
+        b.classList.toggle('active', b.dataset.f === f);
+        if (b.dataset.f === f) b.click();
+      });
+    });
+  });
+})();
+</script>
+</html>
